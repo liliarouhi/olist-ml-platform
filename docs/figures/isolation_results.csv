@@ -1,0 +1,10 @@
+experiment,isolation_level,problem_observed,details
+non-repeatable read,READ COMMITTED,True,"T1 read balance 100, then 50"
+phantom read,READ COMMITTED,True,"T1 counted 2 rows, then 3"
+lost update,READ COMMITTED,True,two +10 deposits on 100 gave 110; both committed
+non-repeatable read,REPEATABLE READ,False,"T1 read balance 100, then 100"
+phantom read,REPEATABLE READ,False,"T1 counted 2 rows, then 2"
+lost update,REPEATABLE READ,False,two +10 deposits on 100 gave 110; T2 aborted with a serialization failure (must retry)
+write skew,REPEATABLE READ,True,"doctors on call afterwards: 0; T1 committed, T2 committed"
+write skew,SERIALIZABLE,False,"doctors on call afterwards: 1; T1 committed, T2 aborted"
+deadlock,READ COMMITTED,True,PostgreSQL detected the lock cycle and aborted T1
