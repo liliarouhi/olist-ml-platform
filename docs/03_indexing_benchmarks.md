@@ -45,3 +45,27 @@ Raw data: `docs/figures/index_benchmark.csv`.
   Parallel Seq Scan on larger tables: the same amount of work is split across CPU cores.
 - The 112k-row Seq Scan took 60 ms in the earlier single cold run and 5.8 ms here with a
   warm cache, which is why page counts are the more reliable metric.
+
+
+  ## Advanced SQL: analytical queries
+
+File: `sql/03_advanced_queries.sql`. Full output: `docs/figures/advanced_queries_output.txt`.
+
+| Query | Technique | Key result |
+|---|---|---|
+| Q1 Monthly revenue, MoM growth, running total | CTE, `LAG`, running `SUM OVER` | 15.42M BRL delivered revenue; peak Nov 2017 (+53.6%, Black Friday) |
+| Q2 Top 3 sellers per state | `RANK() OVER (PARTITION BY ...)` | sellers exist in only 23 states; several states have 1–2 active sellers |
+| Q3 Repeat customers | `LAG` per customer, `FILTER` | 2,997 of 96,096 customers (3.1%) ordered again; 78.2 days between orders on average |
+| Q4 Late deliveries per state | `percentile_cont` (median) | late rate from 2.8% (AM) to 21.4% (AL); SP 4.5% with a 7-day median |
+| Q5 Days without orders | recursive CTE calendar | 140 empty days, all before 2017-01-05 or after 2018-08-31 |
+
+### Findings
+- **Valid analysis window:** every day from 2017-01-05 to 2018-08-31 has orders; the edges of the
+  dataset are incomplete. Models and dashboards use January 2017 to August 2018.
+- **`LAG` compares rows, not calendar months:** November 2016 has no orders, so December 2016 was
+  compared with October. Gap-free time series need a join with a calendar (the Q5 technique).
+- **Repeat purchases are rare (3.1%),** so customer-history features will carry little signal.
+- **Lateness depends on the estimate, not on distance:** remote states (AM, AP, RR) have the longest
+  median delivery (25–26 days) but low late rates, while AL and MA have shorter deliveries and the
+  highest late rates. This motivates the ML target: predicting whether an order arrives after its
+  estimated date.
