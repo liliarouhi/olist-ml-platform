@@ -65,7 +65,8 @@ def plot_late_rate_panels(tables: dict, base_rate: float, path: Path) -> None:
     """2x2 bar charts of the late-delivery rate per group, with the overall rate as reference."""
     fig, axes = plt.subplots(2, 2, figsize=(13, 8.5))
     for ax, (title, table) in zip(axes.flat, tables.items()):
-        ax.bar(table.index.astype(str), table["late_pct"], color="#4c72b0")
+        ax.bar(range(len(table)), table["late_pct"], color="#4c72b0")
+        ax.set_xticks(range(len(table)), labels=table.index.astype(str))
         ax.axhline(base_rate, color="grey", linestyle="--", label=f"overall {base_rate:.1f}%")
         ax.set_title(title)
         ax.set_ylabel("Late deliveries (%)")
