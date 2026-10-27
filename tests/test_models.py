@@ -103,3 +103,9 @@ def test_logistic_regression_matches_scikit_learn():
     sk.fit(X, y, sample_weight=balanced_weights(y))
     assert np.allclose(ours.w_, sk.coef_[0], atol=1e-3)
     assert abs(ours.b_ - sk.intercept_[0]) < 1e-3
+    
+def test_average_precision_handles_ties_like_scikit_learn():
+    rng = np.random.default_rng(6)
+    y = (rng.random(1000) < 0.1).astype(int)
+    scores = np.round(rng.random(1000) + 0.3 * y, 1)   # few distinct values: many ties
+    assert np.isclose(average_precision(y, scores), average_precision_score(y, scores))

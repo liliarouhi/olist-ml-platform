@@ -14,11 +14,14 @@ def roc_auc(y: np.ndarray, scores: np.ndarray) -> float:
 
 
 def average_precision(y: np.ndarray, scores: np.ndarray) -> float:
-    """Area under the precision-recall curve: mean precision at the rank of each true positive."""
-    y = np.asarray(y).astype(bool)
-    hits = y[np.argsort(-np.asarray(scores, dtype=float), kind="mergesort")]
-    precision_at_k = np.cumsum(hits) / np.arange(1, len(hits) + 1)
-    return float(precision_at_k[hits].sum() / hits.sum())
+    """Area under the precision-recall step curve: AP = sum_n (R_n - R_(n-1)) * P_n.
+
+    Computed over distinct thresholds, so tied scores are treated as one group and the
+    result does not depend on the arbitrary order of tied rows.
+    """
+    tp, fp, _, n_pos, _ = _ranked_counts(y, scores)
+    precision, recall = tp / (tp + fp), tp / n_pos
+    return float(np.sum(np.diff(np.r_[0.0, recall]) * precision))
 
 
 def precision_recall_f1(y: np.ndarray, y_pred: np.ndarray) -> tuple[float, float, float]:
