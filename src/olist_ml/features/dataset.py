@@ -62,3 +62,11 @@ def _with_types(df: pd.DataFrame) -> pd.DataFrame:
     for col in CATEGORICAL_FEATURES:
         df[col] = df[col].astype("category")
     return df
+
+def time_split(df: pd.DataFrame, validation_start: str = "2018-03-01",
+               test_start: str = "2018-06-01") -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Chronological split: the model never trains on orders newer than those it is evaluated on."""
+    t = df["purchased_at"]
+    return (df[t < validation_start],
+            df[(t >= validation_start) & (t < test_start)],
+            df[t >= test_start])

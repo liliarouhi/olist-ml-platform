@@ -93,3 +93,16 @@ def plot_correlation(df, columns: list[str], path: Path) -> None:
     fig.tight_layout()
     fig.savefig(path, dpi=150)
     plt.close(fig)
+    
+    
+def plot_loss_curve(history: list[float], path: Path,
+    title: str = "Training loss: logistic regression (gradient descent)") -> None:
+    fig, ax = plt.subplots(figsize=(7, 4))
+    ax.plot(range(1, len(history) + 1), history)
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Weighted cross-entropy + L2")
+    ax.set_title(title)
+    ax.grid(alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
