@@ -8,6 +8,8 @@ import matplotlib
 matplotlib.use("Agg")  
 import matplotlib.pyplot as plt  
 
+import numpy as np
+
 
 def plot_index_benchmark(results: list, path: Path) -> None:
     """Median query time and pages read vs table size, with and without an index (log-log)."""
@@ -103,6 +105,35 @@ def plot_loss_curve(history: list[float], path: Path,
     ax.set_ylabel("Weighted cross-entropy + L2")
     ax.set_title(title)
     ax.grid(alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
+    
+    
+def plot_nn_training(loss: list[float], val_pr_auc: list[float], path: Path) -> None:
+    fig, ax = plt.subplots(figsize=(7, 4))
+    epochs = range(1, len(loss) + 1)
+    ax.plot(epochs, loss, color="#4c72b0", label="training loss")
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Weighted cross-entropy + L2")
+    if val_pr_auc:
+        ax2 = ax.twinx()
+        ax2.plot(range(1, len(val_pr_auc) + 1), val_pr_auc, color="#dd8452", label="validation PR-AUC")
+        ax2.set_ylabel("Validation PR-AUC")
+    ax.set_title("Neural network: Adam, early stopping on validation PR-AUC")
+    fig.legend(loc="upper right")
+    ax.grid(alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
+
+
+def plot_feature_importance(names: list[str], importances: np.ndarray, path: Path, top: int = 15) -> None:
+    order = np.argsort(importances)[-top:]
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.barh([names[i] for i in order], importances[order], color="#4c72b0")
+    ax.set_xlabel("Share of total Gini decrease")
+    ax.set_title(f"Decision tree: feature importance (top {top})")
     fig.tight_layout()
     fig.savefig(path, dpi=150)
     plt.close(fig)

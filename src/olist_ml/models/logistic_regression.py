@@ -37,7 +37,7 @@ class LogisticRegression(BaseModel):
         residual = s * (sigmoid(z) - y) / total          # dL/dz for each row
         return loss, X.T @ residual + self.l2 * w, residual.sum()
 
-    def fit(self, X: np.ndarray, y: np.ndarray) -> LogisticRegression:
+    def fit(self, X: np.ndarray, y: np.ndarray, X_val=None, y_val=None) -> LogisticRegression:
         X, y = np.asarray(X, dtype=float), np.asarray(y, dtype=float)
         weights = balanced_weights(y) if self.balanced else np.ones(len(y))
         self.w_, self.b_ = np.zeros(X.shape[1]), 0.0

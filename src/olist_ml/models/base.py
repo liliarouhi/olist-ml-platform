@@ -12,8 +12,9 @@ class BaseModel(ABC):
     name: str = "model"
 
     @abstractmethod
-    def fit(self, X: np.ndarray, y: np.ndarray) -> BaseModel:
-        """Learn parameters from training data and return self."""
+    def fit(self, X: np.ndarray, y: np.ndarray,
+            X_val: np.ndarray | None = None, y_val: np.ndarray | None = None) -> BaseModel:
+        """Learn parameters from training data. Validation data is optional (early stopping)."""
 
     @abstractmethod
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
