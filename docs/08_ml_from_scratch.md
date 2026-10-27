@@ -81,3 +81,68 @@ MG −0.91, PR −0.75, SP −0.55, DF −0.48 lower it), `same_state` −0.52, 
 - A linear model cannot represent interactions (for example region × season); the next models
   (decision tree, neural network) can.
   
+## Nonlinear models
+
+Files: `src/olist_ml/models/decision_tree.py`, `src/olist_ml/models/neural_net.py`,
+`src/olist_ml/models/factory.py`.
+
+### Decision tree (CART)
+Each split minimizes the weighted Gini impurity of the children:
+
+    G(q) = 2q(1 − q),   q = weighted share of late orders in a node
+    Gain = G(parent) − [ (n_L / n) G(left) + (n_R / n) G(right) ]
+
+For each feature, values are sorted once and the impurity of **every** threshold is computed with
+cumulative sums, so a node costs O(d · n log n) instead of O(d · n²). Growth stops at depth 8, at
+fewer than 100 orders per leaf, or when the gain is negligible. Feature importance is the share of
+the total weighted Gini decrease contributed by each feature.
+
+### Neural network
+Architecture 95 → 32 → 16 → 1 with ReLU hidden layers and a sigmoid output; He initialization
+`W ~ N(0, 2/fan_in)`. Backpropagation applies the chain rule from the output back to the input:
+
+    δ₃ = s ⊙ (p − y) / S
+    ∇Wₖ = aₖ₋₁ᵀ δₖ + λWₖ,   ∇bₖ = Σ δₖ
+    δₖ₋₁ = (δₖ Wₖᵀ) ⊙ 1[zₖ₋₁ > 0]
+
+Optimizer: Adam (`m ← β₁m + (1 − β₁)g`, `v ← β₂v + (1 − β₂)g²`, bias-corrected,
+`θ ← θ − α m̂ / (√v̂ + ε)`), mini-batches of 512, early stopping on validation PR-AUC
+(patience 5), restoring the best weights. Unlike logistic regression, the loss is not convex.
+
+### Design
+`create_model(name)` (Factory pattern) builds any model from its name; all models share the
+`BaseModel` interface, so `scripts/train.py` trains and evaluates them in one loop.
+
+### Additional tests (7 in total, all passing)
+- Neural network gradient check: every weight and bias matches central finite differences (< 10⁻⁵).
+- XOR data (not linearly separable): the network reaches > 90% accuracy; logistic regression stays below 70%.
+- The tree recovers the true threshold (119.5) of a step function exactly.
+
+### Comparison
+
+| Model | Train time | Val ROC-AUC | Val PR-AUC | Test ROC-AUC | Test PR-AUC |
+|---|---:|---:|---:|---:|---:|
+| Random baseline | – | 0.500 | 0.101 | 0.500 | 0.036 |
+| Logistic regression | 7.1 s | 0.686 | 0.174 | 0.667 | 0.057 |
+| Decision tree (125 leaves) | 1.4 s | 0.625 | 0.184 | **0.703** | **0.080** |
+| Neural network (13 epochs) | 0.7 s | **0.719** | **0.213** | 0.695 | 0.062 |
+
+Raw results: `docs/figures/model_comparison.csv`.
+
+![Decision tree feature importance](figures/tree_importance.png)
+![Neural network training](figures/nn_training.png)
+
+Top tree importances: purchase month 0.309, distance 0.151, customer state RJ 0.150,
+estimated days 0.103, freight 0.036.
+
+### Findings
+- Both nonlinear models beat logistic regression on PR-AUC, the main metric for this imbalanced task.
+- **No model wins everywhere:** the network is best on validation, the tree on test, and the tree
+  ranks last on validation ROC-AUC but first on test. With about 670 late orders in the test set,
+  these differences may be noise; confidence intervals are needed before choosing a model.
+- **The tree relies most on purchase month (31%),** the feature the EDA flagged as likely
+  event-driven rather than stable seasonality. An ablation without it is needed.
+- The tree has only 125 distinct scores (one per leaf), which gives a coarse overall ranking
+  (lower ROC-AUC) but separates the riskiest groups well (higher PR-AUC).
+- Adam with mini-batches converged in 13 epochs (0.7 s); full-batch gradient descent needed
+  1,570 epochs (7.1 s).
