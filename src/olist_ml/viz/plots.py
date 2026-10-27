@@ -137,3 +137,39 @@ def plot_feature_importance(names: list[str], importances: np.ndarray, path: Pat
     fig.tight_layout()
     fig.savefig(path, dpi=150)
     plt.close(fig)
+    
+def plot_curves(curves: dict, base_rate: float, path: Path) -> None:
+    """ROC and precision-recall curves of several models on the same test set."""
+    fig, (ax_roc, ax_pr) = plt.subplots(1, 2, figsize=(13, 5))
+    for name, ((fpr, tpr), (precision, recall, _)) in curves.items():
+        ax_roc.plot(fpr, tpr, label=name)
+        ax_pr.plot(recall, precision, label=name)
+    ax_roc.plot([0, 1], [0, 1], "k--", label="random")
+    ax_pr.axhline(base_rate, color="k", linestyle="--", label=f"random ({base_rate:.3f})")
+    ax_roc.set(xlabel="False positive rate", ylabel="True positive rate (recall)", title="ROC curves (test)")
+    ax_pr.set(xlabel="Recall", ylabel="Precision", title="Precision-recall curves (test)", ylim=(0, 1))
+    for ax in (ax_roc, ax_pr):
+        ax.grid(alpha=0.3)
+        ax.legend(fontsize=8)
+    fig.tight_layout()
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
+
+
+def plot_bootstrap_intervals(table, base_rate: float, path: Path) -> None:
+    """Test PR-AUC per model with 95% bootstrap confidence intervals."""
+    t = table.sort_values("test_pr_auc")
+    positions = list(range(len(t)))
+    lower = np.maximum(t["test_pr_auc"] - t["test_pr_auc_low"], 0)
+    upper = np.maximum(t["test_pr_auc_high"] - t["test_pr_auc"], 0)
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+    ax.errorbar(t["test_pr_auc"], positions, xerr=[lower, upper], fmt="o", capsize=4)
+    ax.set_yticks(positions, labels=t["model"])
+    ax.axvline(base_rate, color="grey", linestyle="--", label=f"random ({base_rate:.3f})")
+    ax.set_xlabel("Test PR-AUC with 95% bootstrap confidence interval")
+    ax.set_title("Model comparison on the test set")
+    ax.legend()
+    ax.grid(alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(path, dpi=150)
+    plt.close(fig)

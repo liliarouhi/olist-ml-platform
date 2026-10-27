@@ -5,6 +5,12 @@ from olist_ml.evaluation.metrics import average_precision, roc_auc
 from olist_ml.models.logistic_regression import LogisticRegression, sigmoid
 from olist_ml.models.decision_tree import DecisionTree
 from olist_ml.models.neural_net import NeuralNetwork
+from olist_ml.models.base import balanced_weights
+
+from sklearn.linear_model import LogisticRegression as SkLogisticRegression
+from sklearn.metrics import average_precision_score, roc_auc_score
+
+
 
 def test_gradient_matches_finite_differences():
     rng = np.random.default_rng(0)
@@ -77,3 +83,23 @@ def test_decision_tree_finds_the_true_threshold():
     tree = DecisionTree(max_depth=2, min_samples_leaf=5).fit(X, y)
     assert tree.root_.threshold == 119.5
     assert (tree.predict(X) == y).all()
+    
+def test_metrics_match_scikit_learn():
+    rng = np.random.default_rng(4)
+    y = (rng.random(500) < 0.2).astype(int)
+    scores = rng.random(500) + 0.3 * y
+    assert np.isclose(roc_auc(y, scores), roc_auc_score(y, scores))
+    assert np.isclose(average_precision(y, scores), average_precision_score(y, scores))
+
+
+def test_logistic_regression_matches_scikit_learn():
+    """Same objective: our (1/S)·Σ s·loss + (λ/2)‖w‖² equals sklearn's with C = 1 / (λ·S)."""
+    rng = np.random.default_rng(5)
+    X = rng.normal(size=(200, 3))
+    y = (X @ np.array([1.0, -2.0, 0.5]) + rng.normal(size=200) > 0.5).astype(int)
+    lam = 0.01
+    ours = LogisticRegression(l2=lam, max_epochs=50_000, tol=1e-14).fit(X, y)
+    sk = SkLogisticRegression(C=1 / (lam * len(y)), tol=1e-10, max_iter=10_000)
+    sk.fit(X, y, sample_weight=balanced_weights(y))
+    assert np.allclose(ours.w_, sk.coef_[0], atol=1e-3)
+    assert abs(ours.b_ - sk.intercept_[0]) < 1e-3

@@ -34,3 +34,31 @@ def summary(y: np.ndarray, scores: np.ndarray, threshold: float = 0.5) -> dict[s
     precision, recall, f1 = precision_recall_f1(y, np.asarray(scores) >= threshold)
     return {"roc_auc": roc_auc(y, scores), "pr_auc": average_precision(y, scores),
             "precision": precision, "recall": recall, "f1": f1}
+    
+def _ranked_counts(y: np.ndarray, scores: np.ndarray):
+    """Cumulative TP and FP when predicting 'late' for every score >= each distinct threshold."""
+    y = np.asarray(y).astype(bool)
+    scores = np.asarray(scores, dtype=float)
+    order = np.argsort(-scores, kind="mergesort")
+    s, hits = scores[order], y[order]
+    last_of_group = np.r_[s[1:] != s[:-1], True]       # tied scores share one threshold
+    tp = np.cumsum(hits)[last_of_group]
+    fp = np.cumsum(~hits)[last_of_group]
+    return tp, fp, s[last_of_group], hits.sum(), (~hits).sum()
+
+
+def roc_curve(y: np.ndarray, scores: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    tp, fp, _, n_pos, n_neg = _ranked_counts(y, scores)
+    return np.r_[0.0, fp / n_neg], np.r_[0.0, tp / n_pos]
+
+
+def pr_curve(y: np.ndarray, scores: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    tp, fp, thresholds, n_pos, _ = _ranked_counts(y, scores)
+    return tp / (tp + fp), tp / n_pos, thresholds
+
+
+def best_f1_threshold(y: np.ndarray, scores: np.ndarray) -> float:
+    """Threshold that maximizes F1 (choose it on validation data, never on test data)."""
+    precision, recall, thresholds = pr_curve(y, scores)
+    f1 = 2 * precision * recall / np.maximum(precision + recall, 1e-12)
+    return float(thresholds[np.argmax(f1)])
