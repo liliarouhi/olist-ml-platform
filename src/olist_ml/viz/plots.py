@@ -60,3 +60,35 @@ def plot_state_delivery(states: list[str], orders: list[int], late_pct: list[flo
     fig.tight_layout()
     fig.savefig(path, dpi=150)
     plt.close(fig)
+    
+def plot_late_rate_panels(tables: dict, base_rate: float, path: Path) -> None:
+    """2x2 bar charts of the late-delivery rate per group, with the overall rate as reference."""
+    fig, axes = plt.subplots(2, 2, figsize=(13, 8.5))
+    for ax, (title, table) in zip(axes.flat, tables.items()):
+        ax.bar(table.index.astype(str), table["late_pct"], color="#4c72b0")
+        ax.axhline(base_rate, color="grey", linestyle="--", label=f"overall {base_rate:.1f}%")
+        ax.set_title(title)
+        ax.set_ylabel("Late deliveries (%)")
+        ax.tick_params(axis="x", rotation=45)
+        ax.legend()
+    fig.suptitle("Late-delivery rate by candidate feature")
+    fig.tight_layout()
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
+
+
+def plot_correlation(df, columns: list[str], path: Path) -> None:
+    """Annotated Spearman correlation matrix (rank-based, robust to skewed features)."""
+    corr = df[columns].astype(float).corr(method="spearman")
+    fig, ax = plt.subplots(figsize=(11, 9))
+    image = ax.imshow(corr, cmap="RdBu_r", vmin=-1, vmax=1)
+    ax.set_xticks(range(len(columns)), labels=columns, rotation=90)
+    ax.set_yticks(range(len(columns)), labels=columns)
+    for i in range(len(columns)):
+        for j in range(len(columns)):
+            ax.text(j, i, f"{corr.iloc[i, j]:.2f}", ha="center", va="center", fontsize=6)
+    fig.colorbar(image, ax=ax, label="Spearman correlation")
+    ax.set_title("Correlation between numeric features and the target")
+    fig.tight_layout()
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
