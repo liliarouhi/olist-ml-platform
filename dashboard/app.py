@@ -108,9 +108,11 @@ with sales_tab:
 # ---------- Delivery & satisfaction ----------
 with delivery_tab:
     by_state = load("states", *args)
-    fig = px.scatter(by_state, x="avg_delivery_days", y="late_pct", size="orders", color="avg_review",
-                     text="state", color_continuous_scale="RdYlGn", hover_data={"revenue": ":,.0f"},
-                     title="Delivery time vs late rate per state (size = orders, colour = avg review)",
+    by_state["marker"] = by_state["orders"] ** 0.5  # square root so small states stay visible
+    fig = px.scatter(by_state, x="avg_delivery_days", y="late_pct", size="marker", size_max=40,
+                     color="avg_review", text="state", color_continuous_scale="RdYlGn",
+                     hover_data={"orders": ":,", "revenue": ":,.0f", "marker": False},
+                     title="Delivery time vs late rate per state (size ∝ √orders, colour = avg review)",
                      labels={"avg_delivery_days": "Avg delivery (days)", "late_pct": "Late (%)",
                              "avg_review": "Avg review"})
     fig.update_traces(textposition="top center")
