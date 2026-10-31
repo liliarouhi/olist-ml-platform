@@ -112,4 +112,4 @@ Experiments: `python scripts/benchmark_indexes.py`, `python scripts/isolation_ex
 - Most remaining errors are local late deliveries, which need carrier and warehouse data.
 
 ## Author
-[Lilia Rouhi] · [GitHub](https://github.com/liliarouhi)
+Lilia Rouhi · [GitHub](https://github.com/liliarouhi)
